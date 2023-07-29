@@ -1,7 +1,7 @@
-import { createContext, Dispatch, SetStateAction } from 'react'
-import { AnkiData } from './type'
+import { createContext, Dispatch } from 'react'
+import { AnkiData, AnkiDataAction } from './type'
 
-type ContextType = [AnkiData[], Dispatch<SetStateAction<AnkiData[]>>]
+type ContextType = [AnkiData, Dispatch<AnkiDataAction>]
 
 const AnkiDataContext = createContext<ContextType>({} as ContextType)
 

@@ -19,19 +19,28 @@ const OKButton = styled.button`
 `
 
 const Edit = () => {
-  const [ankiData, setAnkiData] = useContext(AnkiDataContext)
+  const [ankiData, ankiDataDispatch] = useContext(AnkiDataContext)
   const [inputText, setInputText] = useState(
-    ankiData.reduce((pre, cur) => pre + `${cur.question}:${cur.answer}\n`, '')
+    ankiData.cards.reduce(
+      (pre, cur) => pre + `${cur.question}:${cur.answer}\n`,
+      ''
+    )
   )
 
   const clicked = () => {
-    setAnkiData(
-      inputText
+    ankiDataDispatch({
+      type: 'updateCards',
+      cards: inputText
         .split('\n')
         .map((v) => v.split(':', 2))
         .filter((v) => v.length == 2)
-        .map((v) => ({ question: v[0], answer: v[1] }))
-    )
+        .map((v) => ({
+          question: v[0],
+          answer: v[1],
+          failCount: 0,
+          correctCount: 0,
+        })),
+    })
   }
 
   return (
@@ -44,7 +53,7 @@ const Edit = () => {
       ></DataInputBox>
       <OKButton onClick={clicked}>OK</OKButton>
       <ol>
-        {ankiData.map((v, i) => (
+        {ankiData.cards.map((v, i) => (
           <li key={i}>{`${v.question}: ${v.answer}`}</li>
         ))}
       </ol>

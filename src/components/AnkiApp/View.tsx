@@ -2,8 +2,17 @@ import { css } from '@emotion/react'
 import styled from '@emotion/styled'
 import { useContext, useState, useReducer, useEffect } from 'react'
 import AnkiDataContext from './context'
+import HowToUse from './View/HowToUse'
+import JudgeStatus from './View/JudgeStatus'
+
+const OutBox = styled.div`
+  height: 100%;
+  width: 100%;
+`
 
 const QuestionFrame = styled.div`
+  display: flex;
+  flex-direction: column;
   border-style: solid;
   border-color: gray;
   border-width: 3px;
@@ -16,38 +25,48 @@ const QuestionFrame = styled.div`
   padding: 30px;
 `
 
-const Vertical = styled.div`
-  display: flex;
-  flex-direction: column;
+const QuestionTitle = styled.div`
+  flex-grow: 2;
+  font-size: 3vw;
+  text-align: center;
+  padding: 10px;
 `
 
-const itemScale = (scale = 1) =>
-  css`
-    flex-grow: ${scale};
-  `
+const QuestionInputFrame = styled.div`
+  flex-grow: 1;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0px 20px;
+  display: flex;
+  align-items: center;
+`
+
+const QuestionInput = styled.input`
+  outline: none;
+  border-style: solid;
+  width: 100%;
+  font-size: 2vw;
+  text-align: center;
+`
+
+const QuestionJudgeStatus = styled.div`
+  font-size: 2vw;
+  text-align: right;
+`
 
 function View() {
-  const [ankiData] = useContext(AnkiDataContext)
-  const [judgeStatus, setJudgeStatus] = useState<
-    { isCorrect: boolean; neg: number; index: number }[]
-  >([])
+  const [ankiData, ankiDataDispatch] = useContext(AnkiDataContext)
   useEffect(() => {
-    setJudgeStatus(
-      [...Array(ankiData.length)].map((_, i) => ({
-        isCorrect: false,
-        neg: 0,
-        index: i,
-      }))
-    )
+    pageCountDispatch('justify')
   }, [ankiData])
 
   const [answerInput, setAnswerInput] = useState('')
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [pageCount, pageCountDispatch] = useReducer(
-    (state: number, action: 'next' | 'prev'): number => {
+    (state: number, action: 'next' | 'prev' | 'justify'): number => {
       switch (action) {
         case 'next':
-          if (state + 1 < ankiData.length) {
+          if (state + 1 < ankiData.workingCards.length) {
             setIsCorrect(null)
             setAnswerInput('')
             return state + 1
@@ -58,6 +77,11 @@ function View() {
             setAnswerInput('')
             return state - 1
           } else return state
+        case 'justify':
+          if (state >= ankiData.workingCards.length)
+            state = ankiData.workingCards.length - 1
+          else if (state < 0) state = 0
+          return state
         default:
           return state
       }
@@ -65,103 +89,65 @@ function View() {
     0
   )
 
-  const verifyAnswer = (answer: string) => ankiData[pageCount].answer === answer
+  const verifyAnswer = (answer: string) =>
+    ankiData.cards[ankiData.workingCards[pageCount]].answer === answer
+
   const judge = () => {
     if (verifyAnswer(answerInput)) {
       setIsCorrect(true)
-      setJudgeStatus((v) => {
-        v[pageCount].isCorrect = true
-        return v
-      })
+      ankiData.cards[ankiData.workingCards[pageCount]].correctCount++
+      ankiDataDispatch({ type: 'updateCards', cards: ankiData.cards })
     } else {
-      console.log('a')
-      const v = [...judgeStatus]
-      v[pageCount].neg++
-      setJudgeStatus(v)
       setIsCorrect(false)
+      ankiData.cards[ankiData.workingCards[pageCount]].failCount++
+      ankiDataDispatch({ type: 'updateCards', cards: ankiData.cards })
     }
   }
 
-  if (ankiData.length === 0) {
+  if (ankiData.workingCards.length === 0) {
     return <div>nothing data</div>
   }
 
+  if (pageCount >= ankiData.workingCards.length) return <div>error</div>
+
   return (
     <>
-      <div
-        css={css`
-          height: 100%;
-          width: 100%;
-        `}
-      >
+      <OutBox>
         <QuestionFrame>
-          <Vertical
-            css={css`
-              height: 100%;
-            `}
-          >
-            <div>{`${pageCount + 1} / ${ankiData.length}`}</div>
-            <div
+          <div>{`${pageCount + 1} / ${ankiData.workingCards.length}`}</div>
+          <QuestionTitle>
+            {ankiData.cards[ankiData.workingCards[pageCount]].question}
+          </QuestionTitle>
+          <QuestionInputFrame>
+            <QuestionInput
+              type="text"
+              value={answerInput}
+              onChange={(e) => {
+                setAnswerInput(e.target.value)
+                setIsCorrect(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (isCorrect === true) pageCountDispatch('next')
+                  else if (isCorrect === null) judge()
+                } else if (e.key === 'ArrowLeft' && e.altKey)
+                  pageCountDispatch('prev')
+                else if (e.key === 'ArrowRight' && e.altKey)
+                  pageCountDispatch('next')
+              }}
               css={css`
-                ${itemScale(2)}
-                font-size: 3vw;
-                text-align: center;
-                padding: 10px;
+                border: 3px solid ${isCorrect ? 'blue' : 'red'};
               `}
-            >
-              {ankiData[pageCount].question}
-            </div>
-            <div
-              css={css`
-                ${itemScale(1)}
-
-                box-sizing: border-box;
-                width: 100%;
-                padding: 0px 20px;
-                display: flex;
-                align-items: center;
-              `}
-            >
-              <input
-                value={answerInput}
-                onChange={(e) => {
-                  setAnswerInput(e.target.value)
-                  setIsCorrect(null)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    if (isCorrect === true) pageCountDispatch('next')
-                    else if (isCorrect === null) judge()
-                  } else if (e.key === 'ArrowLeft' && e.altKey)
-                    pageCountDispatch('prev')
-                  else if (e.key === 'ArrowRight' && e.altKey)
-                    pageCountDispatch('next')
-                }}
-                type="text"
-                css={css`
-                  outline: none;
-                  border-style: solid;
-                  border: 3px solid ${isCorrect ? 'blue' : 'red'};
-                  width: 100%;
-                  font-size: 2vw;
-                  text-align: center;
-                `}
-              ></input>
-            </div>
-            <div
-              css={css`
-                font-size: 2vw;
-                text-align: right;
-              `}
-            >
-              Judge:{' '}
-              {(() => {
-                if (isCorrect === null) return '　　　'
-                else if (isCorrect) return '正解　'
-                else return '不正解'
-              })()}
-            </div>
-          </Vertical>
+            ></QuestionInput>
+          </QuestionInputFrame>
+          <QuestionJudgeStatus>
+            Judge:{' '}
+            {(() => {
+              if (isCorrect === null) return '　　　'
+              else if (isCorrect) return '正解　'
+              else return '不正解'
+            })()}
+          </QuestionJudgeStatus>
         </QuestionFrame>
         <div
           css={css`
@@ -197,26 +183,10 @@ function View() {
             right
           </button>
         </div>
-        <div>
-          <h3>ステータス</h3>
-          <ul>
-            {judgeStatus.map((v) => (
-              <li key={v.index}>{`${v.index + 1} : ${v.neg} fail  ${(() => {
-                if (v.isCorrect === null) return ''
-                else if (v.isCorrect) return '◯'
-                else return '☓'
-              })()}`}</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h3>使い方</h3>
-          <ul>
-            <li>入力欄でalt+←, alt+→でカードの移動</li>
-            <li>入力欄でEnterを押すと正解、不正解の確認</li>
-          </ul>
-        </div>
-      </div>
+
+        <HowToUse />
+        <JudgeStatus />
+      </OutBox>
     </>
   )
 }

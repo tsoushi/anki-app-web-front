@@ -1,6 +1,7 @@
 import styled from '@emotion/styled'
-import { Dispatch, SetStateAction } from 'react'
+import { Dispatch, SetStateAction, useContext } from 'react'
 import { SceneState } from './type'
+import AnkiDataContext from './context'
 
 const Bar = styled.div`
   display: flex;
@@ -18,6 +19,7 @@ const Item = styled.div`
   border-style: solid;
   border-width: 2px;
   border-color: cyan;
+  border-radius: 20px;
   text-align: center;
   :hover {
     background-color: lightgray;
@@ -33,12 +35,25 @@ const Header = ({
 }: {
   setSceneState: Dispatch<SetStateAction<SceneState>>
 }) => {
+  const [ankiData, ankiDataDispatch] = useContext(AnkiDataContext)
+
   return (
     <header>
       <Bar>
         <ItemSpacer />
         <Item onClick={() => setSceneState('edit')}>編集</Item>
-        <ItemSpacer />
+        <Item
+          onClick={() =>
+            ankiDataDispatch({ type: 'filterCards', options: ['failOnly'] })
+          }
+        >
+          未正解のみ
+        </Item>
+        <Item
+          onClick={() => ankiDataDispatch({ type: 'filterCards', options: [] })}
+        >
+          解除
+        </Item>
         <Item onClick={() => setSceneState('view')}>開始</Item>
         <ItemSpacer />
       </Bar>
